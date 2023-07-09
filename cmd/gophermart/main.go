@@ -31,5 +31,6 @@ func run() error {
 	r := router.NewRouter(s)
 
 	logger.Log.Infow("start server", "host", settings.Host)
-	return r.Run(settings.Host)
+	//return r.Run(settings.Host)
+	return r.Run(`localhost:8080`)
 }
