@@ -17,7 +17,10 @@ import (
 	"github.com/arseniy96/bonus-program/internal/store"
 )
 
-const SecretKey = "8ha37nlpa4"
+const (
+	SecretKey = "8ha37nlpa4"
+	TokenExp  = time.Hour * 24
+)
 
 type Claims struct {
 	jwt.RegisteredClaims
@@ -45,7 +48,49 @@ func (s *Server) SignUp(c *gin.Context) {
 		return
 	}
 
-	token, err := BuildJWTString(body.Login)
+	token, err := buildJWTString(body.Login)
+	if err != nil {
+		logger.Log.Errorf("build json web token error: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	if err := s.repository.UpdateUserToken(ctx, body.Login, token); err != nil {
+		logger.Log.Errorf("update user error: %v", err)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.Header("Authorization", token)
+	c.JSON(http.StatusOK, gin.H{"login": "success"})
+}
+
+func (s *Server) Login(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var body models.LoginRequest
+	decoder := json.NewDecoder(c.Request.Body)
+	if err := decoder.Decode(&body); err != nil {
+		c.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+
+	hPassword := hashPassword(body.Password)
+	user, err := s.repository.FindUserByLogin(ctx, body.Login)
+	if err != nil {
+		if errors.Is(err, store.ErrInvalidLogin) {
+			c.AbortWithError(http.StatusUnauthorized, err)
+			return
+		}
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	if user.Password != hPassword {
+		c.AbortWithError(http.StatusUnauthorized, fmt.Errorf("invalid password"))
+		return
+	}
+
+	token, err := buildJWTString(body.Login)
 	if err != nil {
 		logger.Log.Errorf("build json web token error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
@@ -68,8 +113,11 @@ func hashPassword(password string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(initString)))
 }
 
-func BuildJWTString(login string) (string, error) {
+func buildJWTString(login string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
+		},
 		Login: login,
 	})
 

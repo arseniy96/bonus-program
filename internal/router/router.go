@@ -15,5 +15,6 @@ func NewRouter(s *server.Server) Router {
 	// TODO: написать миддлварю, которая логгирует запрос/ответ
 	g.GET("/ping", s.PingHandler)
 	g.POST("/api/user/register", s.SignUp)
+	g.POST("/api/user/login", s.Login)
 	return g
 }

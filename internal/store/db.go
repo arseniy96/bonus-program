@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -17,6 +18,7 @@ import (
 )
 
 var ErrConflict = errors.New(`already exists`)
+var ErrInvalidLogin = errors.New(`invalid login`)
 
 type Database struct {
 	DB *sqlx.DB
@@ -73,4 +75,20 @@ func (db *Database) UpdateUserToken(ctx context.Context, login, token string) er
 		token,
 		login)
 	return err
+}
+
+func (db *Database) FindUserByLogin(ctx context.Context, login string) (*User, error) {
+	row := db.DB.QueryRowContext(ctx,
+		`SELECT id, login, password, token FROM users WHERE login=$1 LIMIT(1)`,
+		login)
+	var u User
+	err := row.Scan(&u.ID, &u.Login, &u.Password, &u.Token)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidLogin
+		}
+		return nil, err
+	}
+
+	return &u, nil
 }
