@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -25,9 +26,9 @@ type Database struct {
 }
 
 func NewStore(dsn string) (*Database, error) {
-	if err := runMigrations(dsn); err != nil {
-		return nil, fmt.Errorf("migrations failed with error: %w", err)
-	}
+	//if err := runMigrations(dsn); err != nil {
+	//	return nil, fmt.Errorf("migrations failed with error: %w", err)
+	//}
 	db, err := sqlx.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
@@ -37,6 +38,24 @@ func NewStore(dsn string) (*Database, error) {
 	}
 	logger.Log.Info("Database connection was created")
 
+	ctx, close := context.WithTimeout(context.Background(), 5*time.Second)
+	defer close()
+
+	_, err = database.DB.ExecContext(ctx,
+		`CREATE TABLE IF NOT EXISTS users(
+			"id" INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+			"login" VARCHAR,
+			"password" VARCHAR,
+			"token" VARCHAR)`)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.DB.ExecContext(ctx,
+		`CREATE UNIQUE INDEX IF NOT EXISTS login_idx on users(login)`)
+	if err != nil {
+		return nil, err
+	}
 	return database, nil
 }
 
