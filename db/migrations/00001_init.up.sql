@@ -4,8 +4,7 @@ BEGIN TRANSACTION;
         id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
         login VARCHAR,
         password VARCHAR,
-        cookie VARCHAR,
-        cookie_expired TIME
+        token VARCHAR
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS login_idx on users(login);

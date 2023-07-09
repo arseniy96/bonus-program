@@ -2,27 +2,31 @@ package store
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/arseniy96/bonus-program/internal/logger"
 )
 
+var ErrConflict = errors.New(`already exists`)
+
 type Database struct {
-	DB *sql.DB
+	DB *sqlx.DB
 }
 
 func NewStore(dsn string) (*Database, error) {
 	if err := runMigrations(dsn); err != nil {
 		return nil, fmt.Errorf("migrations failed with error: %w", err)
 	}
-	db, err := sql.Open("pgx", dsn)
+	db, err := sqlx.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -54,5 +58,19 @@ func runMigrations(dsn string) error {
 
 func (db *Database) CreateUser(ctx context.Context, login, password string) error {
 	_, err := db.DB.ExecContext(ctx, `INSERT INTO users(login, password) VALUES($1, $2)`, login, password)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgerrcode.IsIntegrityConstraintViolation(pgErr.Code) {
+		return ErrConflict
+	}
+
+	return err
+}
+
+func (db *Database) UpdateUserToken(ctx context.Context, login, token string) error {
+	_, err := db.DB.ExecContext(ctx,
+		`UPDATE users SET token=$1 WHERE login=$2`,
+		token,
+		login)
 	return err
 }

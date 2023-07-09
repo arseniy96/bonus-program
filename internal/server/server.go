@@ -13,6 +13,7 @@ type Server struct {
 
 type Repository interface {
 	CreateUser(context.Context, string, string) error
+	UpdateUserToken(context.Context, string, string) error
 }
 
 func NewServer(r Repository, c *config.Settings) *Server {
