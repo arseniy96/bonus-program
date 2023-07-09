@@ -4,6 +4,7 @@ import (
 	"github.com/arseniy96/bonus-program/internal/config"
 	"github.com/arseniy96/bonus-program/internal/logger"
 	"github.com/arseniy96/bonus-program/internal/router"
+	"github.com/arseniy96/bonus-program/internal/server"
 	"github.com/arseniy96/bonus-program/internal/store"
 )
 
@@ -26,10 +27,9 @@ func run() error {
 	}
 	defer store.Close()
 
-	// create server
+	s := server.NewServer(store, settings)
+	r := router.NewRouter(s)
 
-	r := router.NewRouter()
 	logger.Log.Infow("start server", "host", settings.Host)
-
 	return r.Run(settings.Host)
 }

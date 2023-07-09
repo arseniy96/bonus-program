@@ -1,27 +1,18 @@
 package router
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+
+	"github.com/arseniy96/bonus-program/internal/server"
 )
 
 type Router interface {
 	Run(addr ...string) error
 }
 
-func NewRouter() Router {
+func NewRouter(s *server.Server) Router {
 	g := gin.Default()
 	// TODO: написать миддлварю, которая логгирует запрос/ответ
-	g.GET("/", mock)
+	g.GET("/ping", s.PingHandler)
 	return g
-}
-
-func mock(c *gin.Context) {
-	cookie, err := c.Cookie("test")
-	if err != nil {
-		c.Writer.Write([]byte("missing cookie"))
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"cookie": cookie})
 }
