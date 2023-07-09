@@ -4,6 +4,7 @@ import (
 	"github.com/arseniy96/bonus-program/internal/config"
 	"github.com/arseniy96/bonus-program/internal/logger"
 	"github.com/arseniy96/bonus-program/internal/router"
+	"github.com/arseniy96/bonus-program/internal/store"
 )
 
 func main() {
@@ -19,7 +20,12 @@ func run() error {
 		return err
 	}
 
-	// init database
+	store, err := store.NewStore(settings.DatabaseURI)
+	if err != nil {
+		panic(err)
+	}
+	defer store.Close()
+
 	// create server
 
 	r := router.NewRouter()
