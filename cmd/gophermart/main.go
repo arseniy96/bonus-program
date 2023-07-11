@@ -21,13 +21,13 @@ func run() error {
 		return err
 	}
 
-	store, err := store.NewStore(settings.DatabaseURI)
+	rep, err := store.NewStore(settings.DatabaseURI)
 	if err != nil {
 		panic(err)
 	}
-	defer store.Close()
+	defer rep.Close()
 
-	s := server.NewServer(store, settings)
+	s := server.NewServer(rep, settings)
 	r := router.NewRouter(s)
 
 	logger.Log.Infow("start server", "host", settings.Host)
