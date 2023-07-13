@@ -92,3 +92,46 @@ func (db *Database) FindUserByLogin(ctx context.Context, login string) (*User, e
 
 	return &u, nil
 }
+
+func (db *Database) FindUserByToken(ctx context.Context, token string) (*User, error) {
+	row := db.DB.QueryRowContext(ctx,
+		`SELECT id, login, password, token FROM users WHERE token=$1 LIMIT(1)`,
+		token)
+	var u User
+	err := row.Scan(&u.ID, &u.Login, &u.Password, &u.Token)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrInvalidLogin
+		}
+		return nil, err
+	}
+
+	return &u, nil
+}
+
+func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order, error) {
+	rows, err := db.DB.QueryContext(ctx,
+		`SELECT id, order_number, status, user_id, created_at FROM orders WHERE user_id=$1`,
+		userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []Order
+	for rows.Next() {
+		var order Order
+		err = rows.Scan(&order.ID, &order.OrderNumber, &order.Status, &order.UserID, &order.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+
+		orders = append(orders, order)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return orders, nil
+}

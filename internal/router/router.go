@@ -18,5 +18,6 @@ func NewRouter(s *server.Server) Router {
 	g.GET("/ping", s.PingHandler)
 	g.POST("/api/user/register", s.SignUp)
 	g.POST("/api/user/login", s.Login)
+	g.GET("/api/user/orders", s.GetOrders)
 	return g
 }

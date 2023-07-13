@@ -20,8 +20,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		headerAuth := c.GetHeader("Authorization")
-		if err := checkAuthHeader(headerAuth); err != nil {
+		authHeader := c.GetHeader("Authorization")
+		if err := checkAuthHeader(authHeader); err != nil {
 			c.AbortWithError(http.StatusUnauthorized, err)
 			return
 		}
@@ -30,15 +30,15 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func checkAuthHeader(headerAuth string) error {
-	if len(headerAuth) == 0 {
+func checkAuthHeader(authHeader string) error {
+	if len(authHeader) == 0 {
 		return fmt.Errorf("missing Authorization header")
 	}
 
 	// TODO: насколько ОК из миддлвари обращаться к сервису, чтобы что-то подтянуть?
 	// 		 Кажется, такое надо переносить в отдельное место
 	claims := &server.Claims{}
-	token, err := jwt.ParseWithClaims(headerAuth, claims,
+	token, err := jwt.ParseWithClaims(authHeader, claims,
 		func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])

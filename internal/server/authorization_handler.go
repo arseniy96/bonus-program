@@ -13,7 +13,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/arseniy96/bonus-program/internal/logger"
-	"github.com/arseniy96/bonus-program/internal/server/models"
 	"github.com/arseniy96/bonus-program/internal/store"
 )
 
@@ -31,7 +30,7 @@ func (s *Server) SignUp(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	var body models.SignUpRequest
+	var body SignUpRequest
 	decoder := json.NewDecoder(c.Request.Body)
 	if err := decoder.Decode(&body); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)
@@ -68,7 +67,7 @@ func (s *Server) Login(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	var body models.LoginRequest
+	var body LoginRequest
 	decoder := json.NewDecoder(c.Request.Body)
 	if err := decoder.Decode(&body); err != nil {
 		c.AbortWithError(http.StatusBadRequest, err)

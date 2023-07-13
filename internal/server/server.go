@@ -16,6 +16,8 @@ type Repository interface {
 	CreateUser(context.Context, string, string) error
 	UpdateUserToken(context.Context, string, string) error
 	FindUserByLogin(context.Context, string) (*store.User, error)
+	FindUserByToken(context.Context, string) (*store.User, error)
+	FindOrdersByUserID(context.Context, int) ([]store.Order, error)
 }
 
 func NewServer(r Repository, c *config.Settings) *Server {
