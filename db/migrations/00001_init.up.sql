@@ -8,5 +8,6 @@ BEGIN TRANSACTION;
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS login_idx on users(login);
+    CREATE INDEX IF NOT EXISTS token_idx on users(token);
 
 COMMIT;

@@ -1,0 +1,6 @@
+BEGIN TRANSACTION;
+
+    ALTER TABLE users
+        ADD COLUMN bonuses INT;
+
+COMMIT;

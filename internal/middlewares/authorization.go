@@ -51,6 +51,7 @@ func checkAuthHeader(headerAuth string) error {
 	if !token.Valid {
 		return fmt.Errorf("token is not valid")
 	}
+	// TODO: Проверять токен в БД
 
 	return nil
 }

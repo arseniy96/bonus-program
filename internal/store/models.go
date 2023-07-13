@@ -1,8 +1,27 @@
 package store
 
+import "time"
+
 type User struct {
 	ID       int
 	Login    string
 	Password string
 	Token    string
+}
+
+type Order struct {
+	ID          int
+	OrderNumber string
+	Status      string
+	UserID      int
+	CreatedAt   time.Time
+}
+
+type BonusTransaction struct {
+	ID        int
+	Amount    int
+	Type      string
+	UserID    int
+	OrderID   int
+	CreatedAt time.Time
 }

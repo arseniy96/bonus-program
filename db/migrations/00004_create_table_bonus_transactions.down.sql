@@ -1,0 +1,5 @@
+BEGIN TRANSACTION;
+
+    DROP TABLE IF EXISTS bonus_transactions;
+
+COMMIT;
