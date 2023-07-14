@@ -18,6 +18,8 @@ type Repository interface {
 	FindUserByLogin(context.Context, string) (*store.User, error)
 	FindUserByToken(context.Context, string) (*store.User, error)
 	FindOrdersByUserID(context.Context, int) ([]store.Order, error)
+	FindBonusTransactionsByUserID(context.Context, int) ([]store.BonusTransaction, error)
+	GetWithdrawalSumByUserID(context.Context, int) (int, error)
 }
 
 func NewServer(r Repository, c *config.Settings) *Server {

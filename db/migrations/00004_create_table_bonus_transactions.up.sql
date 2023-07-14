@@ -1,6 +1,7 @@
 BEGIN TRANSACTION;
 
     CREATE TABLE IF NOT EXISTS bonus_transactions(
+        id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
         amount INT,
         type VARCHAR,
         user_id INT,

@@ -19,14 +19,17 @@ func (s *Server) GetOrders(c *gin.Context) {
 	if err != nil {
 		logger.Log.Errorf("find user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
+		return
 	}
 	orders, err := s.repository.FindOrdersByUserID(ctx, user.ID)
 	if err != nil {
 		logger.Log.Errorf("find orders error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
+		return
 	}
 	if len(orders) == 0 {
 		c.JSON(http.StatusNoContent, gin.H{})
+		return
 	}
 
 	var response GetOrdersResponse

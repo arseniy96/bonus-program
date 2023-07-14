@@ -7,6 +7,7 @@ type User struct {
 	Login    string
 	Password string
 	Token    string
+	Bonuses  int
 }
 
 type Order struct {

@@ -18,3 +18,8 @@ type OrderResponse struct {
 	Accrual    int    `json:"accrual"`
 	UploadedAt string `json:"uploaded_at"`
 }
+
+type GetUserBalanceResponse struct {
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+}
