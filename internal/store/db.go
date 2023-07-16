@@ -78,11 +78,10 @@ func (db *Database) UpdateUserToken(ctx context.Context, login, token string) er
 }
 
 func (db *Database) FindUserByLogin(ctx context.Context, login string) (*User, error) {
-	row := db.DB.QueryRowContext(ctx,
-		`SELECT id, login, password, token, bonuses FROM users WHERE login=$1 LIMIT(1)`,
-		login)
 	var u User
-	err := row.Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses)
+	err := db.DB.QueryRowContext(ctx,
+		`SELECT id, login, password, token, bonuses FROM users WHERE login=$1 LIMIT(1)`,
+		login).Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrInvalidLogin
@@ -94,11 +93,10 @@ func (db *Database) FindUserByLogin(ctx context.Context, login string) (*User, e
 }
 
 func (db *Database) FindUserByToken(ctx context.Context, token string) (*User, error) {
-	row := db.DB.QueryRowContext(ctx,
-		`SELECT id, login, password, token, bonuses FROM users WHERE token=$1 LIMIT(1)`,
-		token)
 	var u User
-	err := row.Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses)
+	err := db.DB.QueryRowContext(ctx,
+		`SELECT id, login, password, token, bonuses FROM users WHERE token=$1 LIMIT(1)`,
+		token).Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrInvalidLogin
@@ -113,7 +111,7 @@ func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order
 	rows, err := db.DB.QueryContext(ctx,
 		`SELECT o.id, o.order_number, o.status, o.user_id, o.created_at, bt.amount FROM orders o JOIN bonus_transactions bt ON o.id = bt.order_id WHERE o.user_id=$1 AND bt.type=$2`,
 		userID,
-		"accrual")
+		AccrualType)
 	if err != nil {
 		return nil, err
 	}
@@ -164,11 +162,44 @@ func (db *Database) FindBonusTransactionsByUserID(ctx context.Context, userID in
 }
 
 func (db *Database) GetWithdrawalSumByUserID(ctx context.Context, userID int) (int, error) {
-	row := db.DB.QueryRowContext(ctx,
-		`SELECT SUM(amount) AS total FROM bonus_transactions WHERE user_id=$1 AND type='withdrawal'`,
-		userID)
 	var total int
-	err := row.Scan(&total)
+	err := db.DB.QueryRowContext(ctx,
+		`SELECT SUM(amount) AS total FROM bonus_transactions WHERE user_id=$1 AND type=$2`,
+		userID, WithdrawalType).Scan(&total)
 
 	return total, err
+}
+
+func (db *Database) SaveWithdrawBonuses(ctx context.Context, userID int, orderNumber string, sum float64) error {
+	amount := int(sum * 100)
+
+	// TODO: обернуть всё в транзакцию
+	var userBonuses int
+	err := db.DB.QueryRowContext(ctx,
+		`SELECT bonuses FROM users WHERE id=$1`,
+		userID).Scan(&userBonuses)
+	if err != nil {
+		return err
+	}
+
+	var orderID int
+	err = db.DB.QueryRowContext(ctx,
+		`INSERT INTO orders(order_number, status, user_id) VALUES($1, $2, $3) RETURNING id`,
+		orderNumber, OrderStatusWithdrawn, userID).Scan(&orderID)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.DB.ExecContext(ctx,
+		`INSERT INTO bonus_transactions(amount, type, user_id, order_id) VALUES($1, $2, $3, $4)`,
+		amount, WithdrawalType, userID, orderID)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.DB.ExecContext(ctx,
+		`UPDATE users SET bonuses=$1 WHERE id=$2`,
+		userBonuses-amount,
+		userID)
+	return err
 }

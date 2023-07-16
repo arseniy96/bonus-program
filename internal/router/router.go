@@ -21,5 +21,6 @@ func NewRouter(s *server.Server) Router {
 	g.GET("/api/user/orders", s.GetOrders)
 	g.GET("/api/user/balance", s.GetUserBalance)
 	g.GET("/api/user/withdrawals", s.GetUserWithdrawals)
+	g.POST("/api/user/balance/withdraw", s.WithdrawHandler)
 	return g
 }

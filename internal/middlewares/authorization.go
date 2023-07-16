@@ -7,13 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 
-	"github.com/arseniy96/bonus-program/internal/logger"
 	"github.com/arseniy96/bonus-program/internal/server"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		logger.Log.Info("middleware log")
 		path := c.Request.URL.Path
 		if path == `/api/user/register` || path == `/api/user/login` {
 			c.Next()

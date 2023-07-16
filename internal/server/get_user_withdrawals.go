@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/arseniy96/bonus-program/internal/logger"
+	"github.com/arseniy96/bonus-program/internal/store"
 )
 
 func (s *Server) GetUserWithdrawals(c *gin.Context) {
@@ -30,7 +31,7 @@ func (s *Server) GetUserWithdrawals(c *gin.Context) {
 	}
 	var response GetUserWithdrawalsResponse
 	for _, tr := range bonusTransactions {
-		if tr.Type == "withdrawal" { // TODO: вынести в константу
+		if tr.Type == store.WithdrawalType {
 			response = append(response, WithdrawalsResponse{
 				Order:       tr.OrderNumber,
 				Sum:         float64(tr.Amount) / 100,

@@ -2,6 +2,16 @@ package store
 
 import "time"
 
+const (
+	AccrualType           = "accrual"
+	WithdrawalType        = "withdrawal"
+	OrderStatusNew        = "NEW"
+	OrderStatusWithdrawn  = "WITHDRAWN"
+	OrderStatusProcessing = "PROCESSING"
+	OrderStatusProcessed  = "PROCESSED"
+	OrderStatusInvalid    = "INVALID"
+)
+
 type User struct {
 	ID       int
 	Login    string
