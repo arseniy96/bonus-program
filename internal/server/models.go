@@ -23,3 +23,11 @@ type GetUserBalanceResponse struct {
 	Current   float64 `json:"current"`
 	Withdrawn float64 `json:"withdrawn"`
 }
+
+type GetUserWithdrawalsResponse []WithdrawalsResponse
+
+type WithdrawalsResponse struct {
+	Order       string  `json:"order"`
+	Sum         float64 `json:"sum"`
+	ProcessedAt string  `json:"processed_at"`
+}

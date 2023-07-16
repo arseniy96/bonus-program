@@ -19,10 +19,11 @@ type Order struct {
 }
 
 type BonusTransaction struct {
-	ID        int
-	Amount    int
-	Type      string
-	UserID    int
-	OrderID   int
-	CreatedAt time.Time
+	ID          int
+	Amount      int
+	Type        string
+	UserID      int
+	OrderID     int
+	OrderNumber string
+	CreatedAt   time.Time
 }

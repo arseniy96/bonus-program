@@ -20,5 +20,6 @@ func NewRouter(s *server.Server) Router {
 	g.POST("/api/user/login", s.Login)
 	g.GET("/api/user/orders", s.GetOrders)
 	g.GET("/api/user/balance", s.GetUserBalance)
+	g.GET("/api/user/withdrawals", s.GetUserWithdrawals)
 	return g
 }

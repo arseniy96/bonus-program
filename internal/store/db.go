@@ -138,7 +138,7 @@ func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order
 
 func (db *Database) FindBonusTransactionsByUserID(ctx context.Context, userID int) ([]BonusTransaction, error) {
 	rows, err := db.DB.QueryContext(ctx,
-		`SELECT id, amount, type, user_id, order_id, created_at FROM bonus_transactions WHERE user_id=$1`,
+		`SELECT b.id, b.amount, b.type, b.user_id, b.order_id, o.order_number, b.created_at FROM bonus_transactions b JOIN orders o ON b.order_id=o.id WHERE b.user_id=$1`,
 		userID)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (db *Database) FindBonusTransactionsByUserID(ctx context.Context, userID in
 	var transactions []BonusTransaction
 	for rows.Next() {
 		var tr BonusTransaction
-		err = rows.Scan(&tr.ID, &tr.Amount, &tr.Type, &tr.UserID, &tr.OrderID, &tr.CreatedAt)
+		err = rows.Scan(&tr.ID, &tr.Amount, &tr.Type, &tr.UserID, &tr.OrderID, &tr.OrderNumber, &tr.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
