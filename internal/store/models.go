@@ -15,6 +15,7 @@ type Order struct {
 	OrderNumber string
 	Status      string
 	UserID      int
+	BonusAmount int
 	CreatedAt   time.Time
 }
 

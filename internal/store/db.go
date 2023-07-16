@@ -111,8 +111,9 @@ func (db *Database) FindUserByToken(ctx context.Context, token string) (*User, e
 
 func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order, error) {
 	rows, err := db.DB.QueryContext(ctx,
-		`SELECT id, order_number, status, user_id, created_at FROM orders WHERE user_id=$1`,
-		userID)
+		`SELECT o.id, o.order_number, o.status, o.user_id, o.created_at, bt.amount FROM orders o JOIN bonus_transactions bt ON o.id = bt.order_id WHERE o.user_id=$1 AND bt.type=$2`,
+		userID,
+		"accrual")
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +122,7 @@ func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order
 	var orders []Order
 	for rows.Next() {
 		var order Order
-		err = rows.Scan(&order.ID, &order.OrderNumber, &order.Status, &order.UserID, &order.CreatedAt)
+		err = rows.Scan(&order.ID, &order.OrderNumber, &order.Status, &order.UserID, &order.CreatedAt, &order.BonusAmount)
 		if err != nil {
 			return nil, err
 		}
