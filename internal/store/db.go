@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgerrcode"
@@ -25,12 +24,12 @@ type Database struct {
 }
 
 func NewStore(dsn string) (*Database, error) {
-	if err := runMigrations(dsn); err != nil {
-		return nil, fmt.Errorf("migrations failed with error: %w", err)
-	}
 	db, err := sqlx.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
+	}
+	if err := runMigrations(db); err != nil {
+		return nil, fmt.Errorf("migrations failed with error: %w", err)
 	}
 	database := &Database{
 		DB: db,
@@ -44,18 +43,58 @@ func (db *Database) Close() error {
 	return db.DB.Close()
 }
 
-func runMigrations(dsn string) error {
-	const migrationsPath = "../../db/migrations"
-	m, err := migrate.New(fmt.Sprintf("file://%s", migrationsPath), dsn)
+func runMigrations(db *sqlx.DB) error {
+	//const migrationsPath = "../../db/migrations"
+	//m, err := migrate.New(fmt.Sprintf("file://%s", migrationsPath), dsn)
+	//if err != nil {
+	//	return fmt.Errorf("failed to get a new migrate instance: %w", err)
+	//}
+	//if err := m.Up(); err != nil {
+	//	if !errors.Is(err, migrate.ErrNoChange) {
+	//		return fmt.Errorf("failed to apply migrations: %w", err)
+	//	}
+	//}
+	//return nil
+
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS users(
+        id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        login VARCHAR,
+        password VARCHAR,
+        token VARCHAR,
+        bonuses INT DEFAULT 0
+    );`)
 	if err != nil {
-		return fmt.Errorf("failed to get a new migrate instance: %w", err)
+		return err
 	}
-	if err := m.Up(); err != nil {
-		if !errors.Is(err, migrate.ErrNoChange) {
-			return fmt.Errorf("failed to apply migrations: %w", err)
-		}
+
+	_, err = db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS login_idx on users(login);`)
+	if err != nil {
+		return err
 	}
-	return nil
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS orders(
+        id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        order_number VARCHAR,
+        user_id INT NOT NULL,
+        status VARCHAR,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
+    );`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS bonus_transactions(
+        id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+        amount INT,
+        type VARCHAR,
+        user_id INT,
+        order_id INT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id),
+        CONSTRAINT fk_order FOREIGN KEY(order_id) REFERENCES orders(id)
+    );`)
+	return err
 }
 
 func (db *Database) CreateUser(ctx context.Context, login, password string) error {
