@@ -45,7 +45,7 @@ func (db *Database) Close() error {
 }
 
 func runMigrations(dsn string) error {
-	const migrationsPath = "../../db/migrations"
+	const migrationsPath = "db/migrations"
 	m, err := migrate.New(fmt.Sprintf("file://%s", migrationsPath), dsn)
 	if err != nil {
 		return fmt.Errorf("failed to get a new migrate instance: %w", err)
