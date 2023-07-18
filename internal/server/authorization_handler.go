@@ -77,7 +77,7 @@ func (s *Server) Login(c *gin.Context) {
 	hPassword := hashPassword(body.Password)
 	user, err := s.repository.FindUserByLogin(ctx, body.Login)
 	if err != nil {
-		if errors.Is(err, store.ErrInvalidLogin) {
+		if errors.Is(err, store.ErrNowRows) {
 			c.AbortWithError(http.StatusUnauthorized, err)
 			return
 		}

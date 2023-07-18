@@ -18,7 +18,7 @@ import (
 )
 
 var ErrConflict = errors.New(`already exists`)
-var ErrInvalidLogin = errors.New(`invalid login`)
+var ErrNowRows = errors.New(`invalid login`)
 
 type Database struct {
 	DB *sqlx.DB
@@ -45,7 +45,7 @@ func (db *Database) Close() error {
 }
 
 func runMigrations(dsn string) error {
-	const migrationsPath = "../../db/migrations"
+	const migrationsPath = "db/migrations"
 	m, err := migrate.New(fmt.Sprintf("file://%s", migrationsPath), dsn)
 	if err != nil {
 		return fmt.Errorf("failed to get a new migrate instance: %w", err)
@@ -84,7 +84,7 @@ func (db *Database) FindUserByLogin(ctx context.Context, login string) (*User, e
 		login).Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrInvalidLogin
+			return nil, ErrNowRows
 		}
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (db *Database) FindUserByToken(ctx context.Context, token string) (*User, e
 		token).Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrInvalidLogin
+			return nil, ErrNowRows
 		}
 		return nil, err
 	}
@@ -133,6 +133,30 @@ func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order
 	}
 
 	return orders, nil
+}
+
+func (db *Database) FindOrderByOrderNumber(ctx context.Context, orderNumber string) (*Order, error) {
+	var order Order
+	err := db.DB.QueryRowContext(ctx,
+		`SELECT id, order_number, status, user_id, created_at FROM orders WHERE order_number=$1 LIMIT 1`,
+		orderNumber).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.UserID, &order.CreatedAt)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNowRows
+		}
+		return nil, err
+	}
+
+	return &order, nil
+}
+
+func (db *Database) CreateOrder(ctx context.Context, userID int, orderNumber, status string) error {
+	_, err := db.DB.ExecContext(ctx,
+		`INSERT INTO orders(user_id, order_number, status) VALUES($1, $2, $3)`,
+		userID, orderNumber, status)
+
+	return err
 }
 
 func (db *Database) FindBonusTransactionsByUserID(ctx context.Context, userID int) ([]BonusTransaction, error) {

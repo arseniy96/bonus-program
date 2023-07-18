@@ -9,6 +9,6 @@ BEGIN TRANSACTION;
         CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
     );
 
-    CREATE INDEX IF NOT EXISTS order_number_idx on orders(order_number);
+    CREATE UNIQUE INDEX IF NOT EXISTS order_number_idx on orders(order_number);
 
 COMMIT;

@@ -21,6 +21,8 @@ type Repository interface {
 	FindBonusTransactionsByUserID(context.Context, int) ([]store.BonusTransaction, error)
 	GetWithdrawalSumByUserID(context.Context, int) (int, error)
 	SaveWithdrawBonuses(context.Context, int, string, float64) error
+	FindOrderByOrderNumber(context.Context, string) (*store.Order, error)
+	CreateOrder(context.Context, int, string, string) error
 }
 
 func NewServer(r Repository, c *config.Settings) *Server {
