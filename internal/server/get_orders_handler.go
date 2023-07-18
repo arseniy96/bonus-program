@@ -37,7 +37,7 @@ func (s *Server) GetOrders(c *gin.Context) {
 		orderResp := OrderResponse{
 			Number:     order.OrderNumber,
 			Status:     order.Status,
-			Accrual:    order.BonusAmount,
+			Accrual:    float64(order.BonusAmount) / 100,
 			UploadedAt: order.CreatedAt.Format(time.RFC3339),
 		}
 		response = append(response, orderResp)

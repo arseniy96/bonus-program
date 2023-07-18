@@ -111,7 +111,7 @@ func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order
 	rows, err := db.DB.QueryContext(ctx,
 		`SELECT o.id, o.order_number, o.status, o.user_id, o.created_at, bt.amount FROM orders o JOIN bonus_transactions bt ON o.id = bt.order_id WHERE o.user_id=$1 AND bt.type=$2`,
 		userID,
-		AccrualType)
+		AccrualType) // FIXME: таким запросом не получится достать заказы, у которых нет записи в bonus_transactions
 	if err != nil {
 		return nil, err
 	}
@@ -151,11 +151,43 @@ func (db *Database) FindOrderByOrderNumber(ctx context.Context, orderNumber stri
 	return &order, nil
 }
 
-func (db *Database) CreateOrder(ctx context.Context, userID int, orderNumber, status string) error {
-	_, err := db.DB.ExecContext(ctx,
-		`INSERT INTO orders(user_id, order_number, status) VALUES($1, $2, $3)`,
-		userID, orderNumber, status)
+func (db *Database) CreateOrder(ctx context.Context, userID int, orderNumber, status string) (*Order, error) {
+	var order Order
+	err := db.DB.QueryRowContext(ctx,
+		`INSERT INTO orders(user_id, order_number, status) VALUES($1, $2, $3) RETURNING id, order_number, status, user_id, created_at`,
+		userID, orderNumber, status).Scan(&order.ID, &order.OrderNumber, &order.Status, &order.UserID, &order.CreatedAt)
 
+	return &order, err
+}
+
+func (db *Database) UpdateOrderStatus(ctx context.Context, order *Order, status string, bonus int) error {
+	// TODO: обернуть в транзакцию
+	_, err := db.DB.ExecContext(ctx,
+		`UPDATE orders SET status=$1 WHERE id=$2`,
+		status, order.ID)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.DB.ExecContext(ctx,
+		`INSERT INTO bonus_transactions(amount, type, user_id, order_id) VALUES($1, $2, $3, $4)`,
+		bonus, AccrualType, order.UserID, order.ID)
+	if err != nil {
+		return err
+	}
+
+	var userBonuses int
+	err = db.DB.QueryRowContext(ctx,
+		`SELECT bonuses FROM users WHERE id=$1`,
+		order.UserID).Scan(&userBonuses)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.DB.ExecContext(ctx,
+		`UPDATE users SET bonuses=$1 WHERE id=$2`,
+		userBonuses-bonus,
+		order.UserID)
 	return err
 }
 

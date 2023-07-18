@@ -1,5 +1,11 @@
 package server
 
+import (
+	"time"
+
+	"github.com/arseniy96/bonus-program/internal/store"
+)
+
 type SignUpRequest struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
@@ -13,10 +19,10 @@ type LoginRequest struct {
 type GetOrdersResponse []OrderResponse
 
 type OrderResponse struct {
-	Number     string `json:"number"`
-	Status     string `json:"status"`
-	Accrual    int    `json:"accrual"`
-	UploadedAt string `json:"uploaded_at"`
+	Number     string  `json:"number"`
+	Status     string  `json:"status"`
+	Accrual    float64 `json:"accrual"`
+	UploadedAt string  `json:"uploaded_at"`
 }
 
 type GetUserBalanceResponse struct {
@@ -35,4 +41,9 @@ type WithdrawalsResponse struct {
 type WithdrawRequest struct {
 	Order string  `json:"order"`
 	Sum   float64 `json:"sum"`
+}
+
+type OrderWithTTL struct {
+	order *store.Order
+	ttl   time.Time
 }
