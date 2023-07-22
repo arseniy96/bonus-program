@@ -7,60 +7,66 @@ import (
 
 	"github.com/arseniy96/bonus-program/internal/logger"
 	"github.com/arseniy96/bonus-program/internal/services/accrual"
+	"github.com/arseniy96/bonus-program/internal/services/converter"
+	"github.com/arseniy96/bonus-program/internal/store"
 )
 
-const TTL = 1 * time.Second
+const Delay = 3 * time.Second
 
 func (s *Server) OrdersWorker() {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+	var messages []*store.Order
+	ticker := time.NewTicker(Delay)
 
 	for {
 		select {
-		case orderWithTTL := <-s.OrdersQueue:
-			// дёргаем сервис, который отвечает за обработку заказа
-			// внутри сервиса отправляем запрос в accrual
-			// смотрим на статус:
-			// если статус не конечный, то возвращаем order как есть (???)
-			// если статус конечный, то обновляем ордер и создаём запись в bonus_transactions
-			if orderWithTTL.ttl.Before(time.Now()) {
-				res, err := accrual.CheckOrder(s.Config.AccrualHost, orderWithTTL.order.OrderNumber)
+		case msg := <-s.OrdersQueue:
+			messages = append(messages, msg)
+		case <-ticker.C:
+			logger.Log.Infof("messages count: %v", len(messages))
+			if len(messages) == 0 {
+				continue
+			}
+
+			for _, order := range messages {
+				res, err := accrual.CheckOrder(s.Config.AccrualHost, order.OrderNumber)
 				logger.Log.Info(fmt.Sprintf("%v", res))
 				if err != nil {
 					logger.Log.Errorf("accrual check order error: %v", err)
-					s.OrdersQueue <- OrderWithTTL{
-						order: orderWithTTL.order,
-						ttl:   time.Now().Add(TTL),
-					}
+					s.OrdersQueue <- order
 					continue
 				}
 
-				if res.Status == accrual.OrderStatusRegistered || res.Status == accrual.OrderStatusProcessing {
+				if !hasFinalStatus(res.Status) {
 					// система ещё не обработала заказ – отправляем обратно в очередь
 					logger.Log.Debugw("accrual has not processed the order yet",
-						"order_number", orderWithTTL.order.OrderNumber,
+						"order_number", order.OrderNumber,
 						"current_accrual_status", res.Status)
-					s.OrdersQueue <- OrderWithTTL{
-						order: orderWithTTL.order,
-						ttl:   time.Now().Add(TTL),
-					}
+					s.OrdersQueue <- order
 					continue
 				}
-				err = s.repository.UpdateOrderStatus(ctx, orderWithTTL.order, res.Status, int(res.Accrual*100))
+
+				err = updateOrder(s, order, res.Status, res.Accrual)
 				if err != nil {
 					logger.Log.Error(err)
-					s.OrdersQueue <- OrderWithTTL{
-						order: orderWithTTL.order,
-						ttl:   time.Now().Add(TTL),
-					}
-					continue
+					s.OrdersQueue <- order
 				}
-				continue
 			}
-			s.OrdersQueue <- orderWithTTL
-			continue
+			messages = nil
 		default:
 			continue
 		}
 	}
+}
+
+func hasFinalStatus(status string) bool {
+	return status == accrual.OrderStatusInvalid || status == accrual.OrderStatusProcessed
+}
+
+func updateOrder(s *Server, order *store.Order, accrualStatus string, accruelBonus float64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	bonusAmount := converter.ConvertToCent(accruelBonus)
+
+	return s.Repository.UpdateOrderStatus(ctx, order, accrualStatus, bonusAmount)
 }

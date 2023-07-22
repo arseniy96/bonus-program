@@ -37,7 +37,7 @@ func (s *Server) SignUp(c *gin.Context) {
 	}
 
 	hPassword := hashPassword(body.Password)
-	if err := s.repository.CreateUser(ctx, body.Login, hPassword); err != nil {
+	if err := s.Repository.CreateUser(ctx, body.Login, hPassword); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			c.AbortWithError(http.StatusConflict, fmt.Errorf("user already exists"))
 			return
@@ -53,7 +53,7 @@ func (s *Server) SignUp(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	if err := s.repository.UpdateUserToken(ctx, body.Login, token); err != nil {
+	if err := s.Repository.UpdateUserToken(ctx, body.Login, token); err != nil {
 		logger.Log.Errorf("update user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -75,7 +75,7 @@ func (s *Server) Login(c *gin.Context) {
 	}
 
 	hPassword := hashPassword(body.Password)
-	user, err := s.repository.FindUserByLogin(ctx, body.Login)
+	user, err := s.Repository.FindUserByLogin(ctx, body.Login)
 	if err != nil {
 		if errors.Is(err, store.ErrNowRows) {
 			c.AbortWithError(http.StatusUnauthorized, err)
@@ -95,7 +95,7 @@ func (s *Server) Login(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	if err := s.repository.UpdateUserToken(ctx, body.Login, token); err != nil {
+	if err := s.Repository.UpdateUserToken(ctx, body.Login, token); err != nil {
 		logger.Log.Errorf("update user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return

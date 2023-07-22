@@ -176,17 +176,9 @@ func (db *Database) UpdateOrderStatus(ctx context.Context, order *Order, status 
 		return err
 	}
 
-	var userBonuses int
-	err = db.DB.QueryRowContext(ctx,
-		`SELECT bonuses FROM users WHERE id=$1`,
-		order.UserID).Scan(&userBonuses)
-	if err != nil {
-		return err
-	}
-
 	_, err = db.DB.ExecContext(ctx,
-		`UPDATE users SET bonuses=$1 WHERE id=$2`,
-		userBonuses-bonus,
+		`UPDATE users SET bonuses=bonuses+$1 WHERE id=$2`,
+		bonus,
 		order.UserID)
 	return err
 }

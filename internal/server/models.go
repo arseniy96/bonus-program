@@ -1,11 +1,5 @@
 package server
 
-import (
-	"time"
-
-	"github.com/arseniy96/bonus-program/internal/store"
-)
-
 type SignUpRequest struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
@@ -41,9 +35,4 @@ type WithdrawalsResponse struct {
 type WithdrawRequest struct {
 	Order string  `json:"order"`
 	Sum   float64 `json:"sum"`
-}
-
-type OrderWithTTL struct {
-	order *store.Order
-	ttl   time.Time
 }

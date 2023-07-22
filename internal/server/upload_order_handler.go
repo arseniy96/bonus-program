@@ -18,7 +18,7 @@ func (s *Server) UploadOrderHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	user, err := s.repository.FindUserByToken(ctx, authHeader)
+	user, err := s.Repository.FindUserByToken(ctx, authHeader)
 	if err != nil {
 		logger.Log.Errorf("find user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
@@ -31,16 +31,16 @@ func (s *Server) UploadOrderHandler(c *gin.Context) {
 		return
 	}
 
-	order, err := s.repository.FindOrderByOrderNumber(ctx, string(orderNumber))
+	order, err := s.Repository.FindOrderByOrderNumber(ctx, string(orderNumber))
 	if err != nil {
 		if err == store.ErrNowRows {
-			order, err = s.repository.CreateOrder(ctx, user.ID, string(orderNumber), store.OrderStatusNew)
+			order, err = s.Repository.CreateOrder(ctx, user.ID, string(orderNumber), store.OrderStatusNew)
 			if err != nil {
 				logger.Log.Errorf("create order error: %v", err)
 				c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("save order error %v", err))
 				return
 			}
-			s.OrdersQueue <- OrderWithTTL{order: order, ttl: time.Now().Add(TTL)} // кладём в очередь для фоновой обработки
+			s.OrdersQueue <- order // кладём в очередь для фоновой обработки
 
 			c.String(http.StatusAccepted, "order saved")
 			return

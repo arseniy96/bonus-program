@@ -17,7 +17,7 @@ func (s *Server) WithdrawHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	user, err := s.repository.FindUserByToken(ctx, authHeader)
+	user, err := s.Repository.FindUserByToken(ctx, authHeader)
 	if err != nil {
 		logger.Log.Errorf("find user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
@@ -35,7 +35,7 @@ func (s *Server) WithdrawHandler(c *gin.Context) {
 		return
 	}
 
-	err = s.repository.SaveWithdrawBonuses(ctx, user.ID, body.Order, body.Sum)
+	err = s.Repository.SaveWithdrawBonuses(ctx, user.ID, body.Order, body.Sum)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return

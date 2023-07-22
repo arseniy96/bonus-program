@@ -15,14 +15,14 @@ func (s *Server) GetUserBalance(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	user, err := s.repository.FindUserByToken(ctx, authHeader)
+	user, err := s.Repository.FindUserByToken(ctx, authHeader)
 	if err != nil {
 		logger.Log.Errorf("find user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 
-	withdrawalSum, err := s.repository.GetWithdrawalSumByUserID(ctx, user.ID)
+	withdrawalSum, err := s.Repository.GetWithdrawalSumByUserID(ctx, user.ID)
 	if err != nil {
 		logger.Log.Errorf("find bonus_transactions error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)

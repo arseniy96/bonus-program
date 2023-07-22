@@ -8,9 +8,9 @@ import (
 )
 
 type Server struct {
-	repository  Repository
+	Repository  Repository
 	Config      *config.Settings
-	OrdersQueue chan OrderWithTTL
+	OrdersQueue chan *store.Order
 }
 
 type Repository interface {
@@ -29,9 +29,9 @@ type Repository interface {
 
 func NewServer(r Repository, c *config.Settings) *Server {
 	server := &Server{
-		repository:  r,
+		Repository:  r,
 		Config:      c,
-		OrdersQueue: make(chan OrderWithTTL, 1),
+		OrdersQueue: make(chan *store.Order, 10),
 	}
 
 	go server.OrdersWorker()
