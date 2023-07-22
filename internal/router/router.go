@@ -13,7 +13,7 @@ type Router interface {
 
 func NewRouter(s *server.Server) Router {
 	g := gin.Default()
-	g.Use(middlewares.AuthMiddleware())
+	g.Use(middlewares.AuthMiddleware(s.Repository))
 	// TODO: написать миддлварю, которая логгирует запрос/ответ
 	g.GET("/ping", s.PingHandler)
 	g.POST("/api/user/register", s.SignUp)

@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,12 +12,12 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 
 	"github.com/arseniy96/bonus-program/internal/logger"
+	"github.com/arseniy96/bonus-program/internal/services/mycrypto"
 	"github.com/arseniy96/bonus-program/internal/store"
 )
 
 const (
-	SecretKey = "8ha37nlpa4"
-	TokenExp  = time.Hour * 24
+	TokenExp = time.Hour * 24
 )
 
 type Claims struct {
@@ -36,8 +35,8 @@ func (s *Server) SignUp(c *gin.Context) {
 		c.AbortWithError(http.StatusBadRequest, err)
 	}
 
-	hPassword := hashPassword(body.Password)
-	if err := s.Repository.CreateUser(ctx, body.Login, hPassword); err != nil {
+	hPass := mycrypto.HashFunc(body.Password)
+	if err := s.Repository.CreateUser(ctx, body.Login, hPass); err != nil {
 		if errors.Is(err, store.ErrConflict) {
 			c.AbortWithError(http.StatusConflict, fmt.Errorf("user already exists"))
 			return
@@ -47,13 +46,15 @@ func (s *Server) SignUp(c *gin.Context) {
 		return
 	}
 
-	token, err := buildJWTString(body.Login)
+	token, err := mycrypto.CreateRandomToken(16)
 	if err != nil {
-		logger.Log.Errorf("build json web token error: %v", err)
+		logger.Log.Errorf("build token error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	if err := s.Repository.UpdateUserToken(ctx, body.Login, token); err != nil {
+	hashToken := mycrypto.HashFunc(token)
+	tokenExp := time.Now().Add(TokenExp)
+	if err := s.Repository.UpdateUserToken(ctx, body.Login, hashToken, tokenExp); err != nil {
 		logger.Log.Errorf("update user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -74,7 +75,7 @@ func (s *Server) Login(c *gin.Context) {
 		return
 	}
 
-	hPassword := hashPassword(body.Password)
+	hPass := mycrypto.HashFunc(body.Password)
 	user, err := s.Repository.FindUserByLogin(ctx, body.Login)
 	if err != nil {
 		if errors.Is(err, store.ErrNowRows) {
@@ -84,18 +85,20 @@ func (s *Server) Login(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	if user.Password != hPassword {
+	if user.Password != hPass {
 		c.AbortWithError(http.StatusUnauthorized, fmt.Errorf("invalid password"))
 		return
 	}
 
-	token, err := buildJWTString(body.Login)
+	token, err := mycrypto.CreateRandomToken(16)
 	if err != nil {
-		logger.Log.Errorf("build json web token error: %v", err)
+		logger.Log.Errorf("build token error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	if err := s.Repository.UpdateUserToken(ctx, body.Login, token); err != nil {
+	hashToken := mycrypto.HashFunc(token)
+	tokenExp := time.Now().Add(TokenExp)
+	if err := s.Repository.UpdateUserToken(ctx, body.Login, hashToken, tokenExp); err != nil {
 		logger.Log.Errorf("update user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
@@ -103,27 +106,4 @@ func (s *Server) Login(c *gin.Context) {
 
 	c.Header("Authorization", token)
 	c.JSON(http.StatusOK, gin.H{"login": "success"})
-}
-
-func hashPassword(password string) string {
-	// не будем усложнять – просто возьмём хэш 1 раз
-	initString := fmt.Sprintf("%v:%v", password, SecretKey)
-
-	return fmt.Sprintf("%x", md5.Sum([]byte(initString)))
-}
-
-func buildJWTString(login string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExp)),
-		},
-		Login: login,
-	})
-
-	tokenString, err := token.SignedString([]byte(SecretKey))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
 }

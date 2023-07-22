@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -69,10 +70,11 @@ func (db *Database) CreateUser(ctx context.Context, login, password string) erro
 	return err
 }
 
-func (db *Database) UpdateUserToken(ctx context.Context, login, token string) error {
+func (db *Database) UpdateUserToken(ctx context.Context, login, token string, tokenExp time.Time) error {
 	_, err := db.DB.ExecContext(ctx,
-		`UPDATE users SET token=$1 WHERE login=$2`,
+		`UPDATE users SET token=$1, token_exp_at=$2 WHERE login=$3`,
 		token,
+		tokenExp,
 		login)
 	return err
 }
@@ -80,8 +82,8 @@ func (db *Database) UpdateUserToken(ctx context.Context, login, token string) er
 func (db *Database) FindUserByLogin(ctx context.Context, login string) (*User, error) {
 	var u User
 	err := db.DB.QueryRowContext(ctx,
-		`SELECT id, login, password, token, bonuses FROM users WHERE login=$1 LIMIT(1)`,
-		login).Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses)
+		`SELECT id, login, password, token, bonuses, token_exp_at FROM users WHERE login=$1 LIMIT(1)`,
+		login).Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses, &u.TokenExpAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNowRows
@@ -95,8 +97,8 @@ func (db *Database) FindUserByLogin(ctx context.Context, login string) (*User, e
 func (db *Database) FindUserByToken(ctx context.Context, token string) (*User, error) {
 	var u User
 	err := db.DB.QueryRowContext(ctx,
-		`SELECT id, login, password, token, bonuses FROM users WHERE token=$1 LIMIT(1)`,
-		token).Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses)
+		`SELECT id, login, password, token, bonuses, token_exp_at FROM users WHERE token=$1 LIMIT(1)`,
+		token).Scan(&u.ID, &u.Login, &u.Password, &u.Token, &u.Bonuses, &u.TokenExpAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNowRows

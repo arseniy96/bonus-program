@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/arseniy96/bonus-program/internal/logger"
+	"github.com/arseniy96/bonus-program/internal/services/mycrypto"
 )
 
 func (s *Server) WithdrawHandler(c *gin.Context) {
@@ -17,7 +18,8 @@ func (s *Server) WithdrawHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	user, err := s.Repository.FindUserByToken(ctx, authHeader)
+	token := mycrypto.HashFunc(authHeader)
+	user, err := s.Repository.FindUserByToken(ctx, token)
 	if err != nil {
 		logger.Log.Errorf("find user error: %v", err)
 		c.AbortWithError(http.StatusInternalServerError, err)

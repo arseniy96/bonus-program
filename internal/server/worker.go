@@ -22,7 +22,6 @@ func (s *Server) OrdersWorker() {
 		case msg := <-s.OrdersQueue:
 			messages = append(messages, msg)
 		case <-ticker.C:
-			logger.Log.Infof("messages count: %v", len(messages))
 			if len(messages) == 0 {
 				continue
 			}

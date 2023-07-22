@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"time"
 
 	"github.com/arseniy96/bonus-program/internal/config"
 	"github.com/arseniy96/bonus-program/internal/store"
@@ -15,7 +16,7 @@ type Server struct {
 
 type Repository interface {
 	CreateUser(context.Context, string, string) error
-	UpdateUserToken(context.Context, string, string) error
+	UpdateUserToken(context.Context, string, string, time.Time) error
 	FindUserByLogin(context.Context, string) (*store.User, error)
 	FindUserByToken(context.Context, string) (*store.User, error)
 	FindOrdersByUserID(context.Context, int) ([]store.Order, error)

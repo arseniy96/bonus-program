@@ -13,11 +13,12 @@ const (
 )
 
 type User struct {
-	ID       int
-	Login    string
-	Password string
-	Token    string
-	Bonuses  int
+	ID         int
+	Login      string
+	Password   string
+	Token      string
+	Bonuses    int
+	TokenExpAt *time.Time
 }
 
 type Order struct {
