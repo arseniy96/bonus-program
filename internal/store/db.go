@@ -19,7 +19,7 @@ import (
 )
 
 var ErrConflict = errors.New(`already exists`)
-var ErrNowRows = errors.New(`invalid login`)
+var ErrNowRows = errors.New(`missing data`)
 
 type Database struct {
 	DB *sqlx.DB
@@ -109,11 +109,11 @@ func (db *Database) FindUserByToken(ctx context.Context, token string) (*User, e
 	return &u, nil
 }
 
-func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order, error) {
+func (db *Database) FindOrdersByUserID2(ctx context.Context, userID int) ([]Order, error) {
 	rows, err := db.DB.QueryContext(ctx,
-		`SELECT o.id, o.order_number, o.status, o.user_id, o.created_at, bt.amount FROM orders o JOIN bonus_transactions bt ON o.id = bt.order_id WHERE o.user_id=$1 AND bt.type=$2`,
+		`SELECT o.id, o.order_number, o.status, o.user_id, o.created_at, bt.amount FROM orders o LEFT JOIN bonus_transactions bt ON o.id = bt.order_id WHERE o.user_id=$1 AND o.status!=$2`,
 		userID,
-		AccrualType) // FIXME: таким запросом не получится достать заказы, у которых нет записи в bonus_transactions
+		OrderStatusWithdrawn) // FIXME: таким запросом не получится достать заказы, у которых нет записи в bonus_transactions
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +130,45 @@ func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order
 		orders = append(orders, order)
 	}
 	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return orders, nil
+}
+
+func (db *Database) FindOrdersByUserID(ctx context.Context, userID int) ([]Order, error) {
+	orderRows, err := db.DB.QueryContext(ctx,
+		`SELECT id, order_number, status, user_id, created_at FROM orders WHERE user_id=$1 AND status!=$2`,
+		userID,
+		OrderStatusWithdrawn)
+	if err != nil {
+		return nil, err
+	}
+	defer orderRows.Close()
+
+	var orders []Order
+	for orderRows.Next() {
+		var order Order
+		err = orderRows.Scan(&order.ID, &order.OrderNumber, &order.Status, &order.UserID, &order.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		// FIXME: надо доставать бонусы из другой таблицы вместе с заказами.
+		//  НО если транзакции нет, то падает ошибка, что мы через scan &order.BonusAmount пытаемся записать nil
+		//  больше нет других идей, кроме как доставать отдельный и обрабатывать ошибку, если нет записи :facepalm:
+		err = db.DB.QueryRowContext(ctx,
+			`SELECT amount FROM bonus_transactions WHERE order_id=$1 AND type=$2`,
+			order.ID, AccrualType).Scan(&order.BonusAmount)
+		if err != nil {
+			if !errors.Is(err, sql.ErrNoRows) {
+				return nil, err
+			}
+		}
+
+		orders = append(orders, order)
+	}
+	err = orderRows.Err()
 	if err != nil {
 		return nil, err
 	}
@@ -163,26 +202,38 @@ func (db *Database) CreateOrder(ctx context.Context, userID int, orderNumber, st
 }
 
 func (db *Database) UpdateOrderStatus(ctx context.Context, order *Order, status string, bonus int) error {
-	// TODO: обернуть в транзакцию
-	_, err := db.DB.ExecContext(ctx,
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx,
 		`UPDATE orders SET status=$1 WHERE id=$2`,
 		status, order.ID)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.DB.ExecContext(ctx,
-		`INSERT INTO bonus_transactions(amount, type, user_id, order_id) VALUES($1, $2, $3, $4)`,
-		bonus, AccrualType, order.UserID, order.ID)
-	if err != nil {
-		return err
+	// если бонусы не начислены, не надо ничего обновлять
+	if bonus != 0 {
+		_, err = tx.ExecContext(ctx,
+			`INSERT INTO bonus_transactions(amount, type, user_id, order_id) VALUES($1, $2, $3, $4)`,
+			bonus, AccrualType, order.UserID, order.ID)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.ExecContext(ctx,
+			`UPDATE users SET bonuses=bonuses+$1 WHERE id=$2`,
+			bonus,
+			order.UserID)
+		if err != nil {
+			return err
+		}
 	}
 
-	_, err = db.DB.ExecContext(ctx,
-		`UPDATE users SET bonuses=bonuses+$1 WHERE id=$2`,
-		bonus,
-		order.UserID)
-	return err
+	return tx.Commit()
 }
 
 func (db *Database) FindBonusTransactionsByUserID(ctx context.Context, userID int) ([]BonusTransaction, error) {
@@ -220,36 +271,35 @@ func (db *Database) GetWithdrawalSumByUserID(ctx context.Context, userID int) (i
 	return total, err
 }
 
-func (db *Database) SaveWithdrawBonuses(ctx context.Context, userID int, orderNumber string, sum float64) error {
-	amount := int(sum * 100)
-
-	// TODO: обернуть всё в транзакцию
-	var userBonuses int
-	err := db.DB.QueryRowContext(ctx,
-		`SELECT bonuses FROM users WHERE id=$1`,
-		userID).Scan(&userBonuses)
+func (db *Database) SaveWithdrawBonuses(ctx context.Context, userID int, orderNumber string, amount int) error {
+	tx, err := db.DB.Begin()
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback()
 
 	var orderID int
-	err = db.DB.QueryRowContext(ctx,
+	err = tx.QueryRowContext(ctx,
 		`INSERT INTO orders(order_number, status, user_id) VALUES($1, $2, $3) RETURNING id`,
 		orderNumber, OrderStatusWithdrawn, userID).Scan(&orderID)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.DB.ExecContext(ctx,
+	_, err = tx.ExecContext(ctx,
 		`INSERT INTO bonus_transactions(amount, type, user_id, order_id) VALUES($1, $2, $3, $4)`,
 		amount, WithdrawalType, userID, orderID)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.DB.ExecContext(ctx,
-		`UPDATE users SET bonuses=$1 WHERE id=$2`,
-		userBonuses-amount,
+	_, err = tx.ExecContext(ctx,
+		`UPDATE users SET bonuses=bonuses-$1 WHERE id=$2`,
+		amount,
 		userID)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

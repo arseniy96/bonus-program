@@ -22,7 +22,7 @@ type Repository interface {
 	FindOrdersByUserID(context.Context, int) ([]store.Order, error)
 	FindBonusTransactionsByUserID(context.Context, int) ([]store.BonusTransaction, error)
 	GetWithdrawalSumByUserID(context.Context, int) (int, error)
-	SaveWithdrawBonuses(context.Context, int, string, float64) error
+	SaveWithdrawBonuses(context.Context, int, string, int) error
 	FindOrderByOrderNumber(context.Context, string) (*store.Order, error)
 	CreateOrder(context.Context, int, string, string) (*store.Order, error)
 	UpdateOrderStatus(context.Context, *store.Order, string, int) error

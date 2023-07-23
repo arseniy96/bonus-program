@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/arseniy96/bonus-program/internal/logger"
+	"github.com/arseniy96/bonus-program/internal/services/converter"
 	"github.com/arseniy96/bonus-program/internal/services/mycrypto"
 )
 
@@ -39,9 +40,14 @@ func (s *Server) GetOrders(c *gin.Context) {
 		orderResp := OrderResponse{
 			Number:     order.OrderNumber,
 			Status:     order.Status,
-			Accrual:    float64(order.BonusAmount) / 100,
 			UploadedAt: order.CreatedAt.Format(time.RFC3339),
 		}
+
+		ac := converter.ConvertFromCent(order.BonusAmount) // FIXME: Не знаю, как сделать по-другому
+		if ac != 0 {
+			orderResp.Accrual = ac
+		}
+
 		response = append(response, orderResp)
 	}
 	c.JSON(http.StatusOK, response)

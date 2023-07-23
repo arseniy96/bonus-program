@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/arseniy96/bonus-program/internal/logger"
+	"github.com/arseniy96/bonus-program/internal/services/converter"
 	"github.com/arseniy96/bonus-program/internal/services/mycrypto"
 )
 
@@ -32,7 +33,7 @@ func (s *Server) GetUserBalance(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, GetUserBalanceResponse{
-		Current:   float64(user.Bonuses) / 100,  // в БД храним в копейках (*100)
-		Withdrawn: float64(withdrawalSum) / 100, // в БД храним в копейках (*100)
+		Current:   converter.ConvertFromCent(user.Bonuses),  // в БД храним в копейках
+		Withdrawn: converter.ConvertFromCent(withdrawalSum), // в БД храним в копейках
 	})
 }

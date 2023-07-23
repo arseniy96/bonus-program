@@ -61,11 +61,11 @@ func hasFinalStatus(status string) bool {
 	return status == accrual.OrderStatusInvalid || status == accrual.OrderStatusProcessed
 }
 
-func updateOrder(s *Server, order *store.Order, accrualStatus string, accruelBonus float64) error {
+func updateOrder(s *Server, order *store.Order, accrualStatus string, accrualBonus float64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	bonusAmount := converter.ConvertToCent(accruelBonus)
+	bonusAmount := converter.ConvertToCent(accrualBonus)
 
 	return s.Repository.UpdateOrderStatus(ctx, order, accrualStatus, bonusAmount)
 }

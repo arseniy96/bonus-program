@@ -18,7 +18,7 @@ type User struct {
 	Password   string
 	Token      string
 	Bonuses    int
-	TokenExpAt *time.Time
+	TokenExpAt time.Time
 }
 
 type Order struct {

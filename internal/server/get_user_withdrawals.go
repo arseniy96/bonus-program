@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/arseniy96/bonus-program/internal/logger"
+	"github.com/arseniy96/bonus-program/internal/services/converter"
 	"github.com/arseniy96/bonus-program/internal/services/mycrypto"
 	"github.com/arseniy96/bonus-program/internal/store"
 )
@@ -36,7 +37,7 @@ func (s *Server) GetUserWithdrawals(c *gin.Context) {
 		if tr.Type == store.WithdrawalType {
 			response = append(response, WithdrawalsResponse{
 				Order:       tr.OrderNumber,
-				Sum:         float64(tr.Amount) / 100,
+				Sum:         converter.ConvertFromCent(tr.Amount),
 				ProcessedAt: tr.CreatedAt.Format(time.RFC3339),
 			})
 		}
