@@ -11,6 +11,7 @@ import (
 
 	"github.com/arseniy96/bonus-program/internal/logger"
 	"github.com/arseniy96/bonus-program/internal/services/mycrypto"
+	"github.com/arseniy96/bonus-program/internal/services/validations"
 	"github.com/arseniy96/bonus-program/internal/store"
 )
 
@@ -30,6 +31,10 @@ func (s *Server) UploadOrderHandler(c *gin.Context) {
 	orderNumber, err := io.ReadAll(c.Request.Body)
 	if err != nil || len(orderNumber) == 0 {
 		c.AbortWithError(http.StatusBadRequest, fmt.Errorf("request error"))
+		return
+	}
+	if err := validations.LuhnValidate(string(orderNumber)); err != nil {
+		c.AbortWithError(http.StatusUnprocessableEntity, fmt.Errorf("invalid order_number"))
 		return
 	}
 

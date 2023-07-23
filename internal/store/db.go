@@ -263,12 +263,18 @@ func (db *Database) FindBonusTransactionsByUserID(ctx context.Context, userID in
 }
 
 func (db *Database) GetWithdrawalSumByUserID(ctx context.Context, userID int) (int, error) {
-	var total int
+	var total sql.NullInt64
 	err := db.DB.QueryRowContext(ctx,
 		`SELECT SUM(amount) AS total FROM bonus_transactions WHERE user_id=$1 AND type=$2`,
 		userID, WithdrawalType).Scan(&total)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, err
+	}
 
-	return total, err
+	return int(total.Int64), err
 }
 
 func (db *Database) SaveWithdrawBonuses(ctx context.Context, userID int, orderNumber string, amount int) error {
